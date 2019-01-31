@@ -784,7 +784,7 @@ class _FeatureDict(dict):
             return value
 
         if self.ndim:
-            if not isinstance(value, (xr.DataArray)):
+            if not isinstance(value, xr.DataArray):
                 raise ValueError('{} feature has to be a xarray DataArray'.format(self.feature_type))
             if value.ndim != self.ndim:
                 raise ValueError('Numpy array of {} feature has to have {} '

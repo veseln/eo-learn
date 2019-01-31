@@ -6,6 +6,7 @@ import logging
 import datetime as dt
 
 import numpy as np
+import xarray as xr
 from sentinelhub import WmsRequest, WcsRequest, MimeType, DataSource, CustomUrlParam, ServiceType
 from sentinelhub.time_utils import datetime_to_iso, iso_to_datetime, parse_time
 
@@ -143,7 +144,7 @@ class SentinelHubOGCInput(EOTask):
         if self.feature_type.is_discrete():
             data = data.astype(np.int32)
 
-        eopatch[self.feature_type][self.feature_name] = data
+        eopatch[self.feature_type][self.feature_name] = xr.DataArray(data)
 
         mask_feature_type, mask_feature_name = next(self.valid_data_mask_feature())
 
@@ -151,7 +152,7 @@ class SentinelHubOGCInput(EOTask):
         valid_data = (valid_mask == max_value).astype(np.bool).reshape(valid_mask.shape + (1,))
 
         if mask_feature_name not in eopatch[mask_feature_type]:
-            eopatch[mask_feature_type][mask_feature_name] = valid_data
+            eopatch[mask_feature_type][mask_feature_name] = xr.DataArray(valid_data)
 
     def _add_meta_info(self, eopatch, request_params, service_type):
         """ Adds any missing metadata info to EOPatch """

@@ -478,3 +478,92 @@ def constant_pad(X, multiple_of, up_down_rule='even', left_right_rule='even', pa
 
     return np.lib.pad(X, ((row_padding_up, row_padding_down), (col_padding_left, col_padding_right)),
                       'constant', constant_values=((pad_value, pad_value), (pad_value, pad_value)))
+
+
+def get_spatial_coordinates(bbox, data, index_x, index_y):
+    """ Returns coordinates dictionary for building
+
+
+    :param bbox:
+    :param data:
+    :param index_x:
+    :param index_y:
+    :return: coordinates
+    """
+
+    coordinates = {
+        'x': np.linspace(bbox.min_x, bbox.max_x, data.shape[index_x]),
+        'y': np.linspace(bbox.min_y, bbox.max_y, data.shape[index_y])
+    }
+
+    return coordinates
+
+
+def get_temporal_coordinates(timestamps):
+    """
+
+    :return:
+    """
+    coordinates = {
+        'time': timestamps
+    }
+
+    return coordinates
+
+
+def get_depth_coordinates(names_of_channels=None, data=None):
+    """
+
+    :return:
+    """
+    coordinates = {}
+    if names_of_channels:
+        coordinates['depth'] = names_of_channels
+    elif data:
+        coordinates['depth'] = np.arange(data.shape[-1])
+
+    return coordinates
+
+
+def get_coordinates(feature_type, bbox, data, index_x, index_y, timestamps, names_of_channels=None):
+    """
+
+    :param feature_type:
+    :param bbox:
+    :param data:
+    :param index_x:
+    :param index_y:
+    :param timestamps:
+    :return:
+    """
+
+    if feature_type == FeatureType.DATA or feature_type == FeatureType.MASK:
+        return {**get_temporal_coordinates(timestamps),
+                **get_spatial_coordinates(bbox, data, index_x, index_y),
+                **get_depth_coordinates(names_of_channels, data)
+                }
+    elif feature_type == FeatureType.SCALAR or feature_type == FeatureType.LABEL:
+        return {**get_temporal_coordinates(timestamps),
+                **get_depth_coordinates(names_of_channels, data)
+                }
+    elif feature_type == FeatureType.DATA_TIMELESS or feature_type == FeatureType.MASK_TIMELESS:
+        return {**get_spatial_coordinates(bbox, data, index_x, index_y),
+                **get_depth_coordinates(names_of_channels, data)
+                }
+    elif feature_type == FeatureType.SCALAR_TIMELESS or feature_type == FeatureType.LABEL_TIMELESS:
+        return get_depth_coordinates(names_of_channels, data)
+
+
+def get_dimension(feature_type):
+    """ Returns list of dimensions
+
+    :return:
+    """
+    if feature_type == FeatureType.DATA or feature_type == FeatureType.MASK:
+        return ['time', 'x', 'y', 'depth']
+    elif feature_type == FeatureType.SCALAR or feature_type == FeatureType.LABEL:
+        return['time', 'depth']
+    elif feature_type == FeatureType.DATA_TIMELESS or feature_type == FeatureType.MASK_TIMELESS:
+        return['x', 'y', 'depth']
+    elif feature_type == FeatureType.SCALAR_TIMELESS or feature_type == FeatureType.LABEL_TIMELESS:
+        return['depth']
