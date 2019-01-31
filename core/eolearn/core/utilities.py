@@ -7,6 +7,7 @@ import logging
 from collections import OrderedDict
 
 import numpy as np
+import xarray as xr
 
 from .constants import FeatureType
 
@@ -366,6 +367,12 @@ def deep_eq(fst_obj, snd_obj):
 
         return np.array_equal(fst_obj[~fst_nan_mask], snd_obj[~snd_nan_mask]) and \
             np.array_equal(fst_nan_mask, snd_nan_mask)
+
+    if isinstance(fst_obj, xr.DataArray):
+        if not isinstance(snd_obj, xr.DataArray):
+            return False
+
+        return fst_obj.identical(snd_obj)
 
     if not isinstance(fst_obj, type(snd_obj)):
         return False

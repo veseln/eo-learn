@@ -141,6 +141,7 @@ class FileFormat(Enum):
     PICKLE = 'pkl'
     NPY = 'npy'
     GZIP = 'gz'
+    JSON = 'json'
 
     def extension(self):
         """ Returns file extension of file format

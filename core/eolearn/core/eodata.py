@@ -14,6 +14,8 @@ import attr
 import dateutil.parser
 import numpy as np
 import geopandas as gpd
+import xarray as xr
+import json
 
 import sentinelhub
 
@@ -652,6 +654,8 @@ class EOPatch:
                     eopatch_content[feature_type_name] = {}
 
                 for feature in os.listdir(feature_type_path):
+                    if os.path.splitext(feature)[1] == '.json':
+                        continue
                     feature_path = os.path.join(feature_type_path, feature)
                     if os.path.isdir(feature_path):
                         warnings.warn(
@@ -780,8 +784,8 @@ class _FeatureDict(dict):
             return value
 
         if self.ndim:
-            if not isinstance(value, np.ndarray):
-                raise ValueError('{} feature has to be a numpy array'.format(self.feature_type))
+            if not isinstance(value, (xr.DataArray)):
+                raise ValueError('{} feature has to be a xarray DataArray'.format(self.feature_type))
             if value.ndim != self.ndim:
                 raise ValueError('Numpy array of {} feature has to have {} '
                                  'dimension{}'.format(self.feature_type, self.ndim, 's' if self.ndim > 1 else ''))
@@ -867,14 +871,33 @@ class _FileLoader:
             with open(path, "rb") as infile:
                 return pickle.load(infile)
 
+        if file_formats[-1] is FileFormat.GZIP or file_formats[-1] is FileFormat.NPY:
+
+            dims_path = os.path.splitext(path)[0]+'-dims.json'
+            try:
+                with open(dims_path) as f:
+                    dims = json.load(f)
+            except FileNotFoundError:
+                dims = None
+
+            coords_path = os.path.splitext(path)[0]+'-coords.json'
+            try:
+                with open(coords_path) as f:
+                    coords = json.load(f)
+            except FileNotFoundError:
+                coords = None
+
         if file_formats[-1] is FileFormat.NPY:
             if self.mmap:
-                return np.load(path, mmap_mode='r')
-            return np.load(path)
+                values = np.load(path, mmap_mode='r')
+            else:
+                values = np.load(path)
+            return xr.DataArray(data=values, dims=dims, coords=coords)
 
         if file_formats[-1] is FileFormat.GZIP:
             if file_formats[-2] is FileFormat.NPY:
-                return np.load(gzip.open(path))
+                values = np.load(gzip.open(path))
+                return xr.DataArray(data=values, dims=dims, coords=coords)
 
             if len(file_formats) == 1 or file_formats[-2] is FileFormat.PICKLE:
                 return pickle.load(gzip.open(path))
@@ -949,6 +972,18 @@ class _FileSaver:
 
             if self.file_format is FileFormat.NPY:
                 np.save(outfile, data)
+                # save coordinates
+
+                coordinates = {element: data.coords[element].values.tolist() for element in data.coords}
+                coords_filename = os.path.splitext(filename)[0] + '-coords.json'
+                with open(coords_filename, 'w') as filehandle:
+                    json.dump(coordinates, filehandle)
+
+                dimensions = data.dims
+                dims_filename = os.path.splitext(filename)[0] + '-dims.json'
+                with open(dims_filename, 'w') as filehandle:
+                    json.dump(dimensions, filehandle)
+
             elif self.file_format is FileFormat.PICKLE:
                 pickle.dump(data, outfile)
             else:
