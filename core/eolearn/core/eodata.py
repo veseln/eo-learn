@@ -730,6 +730,14 @@ class EOPatch:
         self.timestamp = good_timestamps
         return remove_from_patch
 
+    def convert_to_xarray(self):
+        """
+        Convert data in eopatch from numpy arrays or xarrays with dummy dimensions/coordinates to xarrays.
+        It gets dimensions from FeatureType and coordinates from bbox and timestamps.
+        :return:
+        """
+        pass
+
 
 class _FeatureDict(dict):
     """A dictionary structure that holds features of certain feature type.
@@ -784,7 +792,7 @@ class _FeatureDict(dict):
             return value
 
         if self.ndim:
-            if not isinstance(value, xr.DataArray):
+            if not isinstance(value, (xr.DataArray, np.ndarray)):
                 raise ValueError('{} feature has to be a xarray DataArray'.format(self.feature_type))
             if value.ndim != self.ndim:
                 raise ValueError('Numpy array of {} feature has to have {} '

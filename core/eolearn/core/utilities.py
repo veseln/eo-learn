@@ -9,6 +9,7 @@ from collections import OrderedDict
 import numpy as np
 import xarray as xr
 
+
 from .constants import FeatureType
 
 LOGGER = logging.getLogger(__name__)
@@ -568,3 +569,38 @@ def get_dimensions(feature_type):
         return['y', 'x', 'depth']
     elif feature_type == FeatureType.SCALAR_TIMELESS or feature_type == FeatureType.LABEL_TIMELESS:
         return['depth']
+
+
+def array_to_dataframe(eopatch, feature_type, feature_name):
+    """
+        Convert one numpy ndarray to xarray dataframe
+    """
+
+    bbox = eopatch.bbox
+    timestamps = eopatch.timestamp
+    data = eopatch[feature_type][feature_name]
+    if isinstance(data, xr.DataArray):
+        data = data.values
+    dimensions = get_dimensions(feature_type)
+    coordinates = get_coordinates(feature_type, bbox, data, timestamps)
+    dataframe = xr.DataArray(data=data,
+                             coords=coordinates,
+                             dims=dimensions,
+                             attrs={'crs': str(bbox.crs),
+                                    'group': feature_type},
+                             name=feature_name)
+
+    return dataframe
+
+
+def eopatch_to_xarrays(eopatch):
+    for feature in eopatch.get_feature_list():
+        if not isinstance(feature, tuple):
+            continue
+        feature_type = feature[0]
+        feature_name = feature[1]
+        print(feature_type, feature_name)
+        if feature_type not in (FeatureType.VECTOR, FeatureType.VECTOR_TIMELESS, FeatureType.META_INFO):
+            eopatch[feature_type][feature_name] = array_to_dataframe(eopatch, feature_type, feature_name)
+
+    return eopatch
