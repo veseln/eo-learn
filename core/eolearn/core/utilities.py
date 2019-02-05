@@ -521,7 +521,7 @@ def get_depth_coordinates(feature_name, data, names_of_channels=None):
     :return:
     """
     coordinates = {}
-    depth = feature_name+'_dim'
+    depth = feature_name.replace('-', '_')+'_dim'
     if names_of_channels:
         coordinates[depth] = names_of_channels
     elif isinstance(data, np.ndarray):
@@ -562,7 +562,7 @@ def get_dimensions(feature_type, feature_name):
 
     :return:
     """
-    depth = feature_name + "_dim"
+    depth = feature_name.replace('-', '_') + "_dim"
     if feature_type == FeatureType.DATA or feature_type == FeatureType.MASK:
         return ['time', 'y', 'x', depth]
     elif feature_type == FeatureType.SCALAR or feature_type == FeatureType.LABEL:
@@ -591,7 +591,7 @@ def array_to_dataframe(eopatch, feature_type, feature_name):
                              attrs={'crs': str(bbox.crs),
                                     'feature_type': feature_type,
                                     'feature_name': feature_name},
-                             name=feature_name)
+                             name=feature_name.replace('-', '_'))
 
     return dataframe
 
