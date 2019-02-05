@@ -145,8 +145,9 @@ class SentinelHubOGCInput(EOTask):
         if self.feature_type.is_discrete():
             data = data.astype(np.int32)
 
-        dimensions = get_dimensions(feature_type=self.feature_type)
+        dimensions = get_dimensions(feature_type=self.feature_type, feature_name=self.feature_name)
         coordinates = get_coordinates(feature_type=self.feature_type,
+                                      feature_name=self.feature_name,
                                       bbox=self._get_parameter('bbox', eopatch),
                                       data=data,
                                       timestamps=eopatch.timestamp)
@@ -160,8 +161,9 @@ class SentinelHubOGCInput(EOTask):
         valid_data = (valid_mask == max_value).astype(np.bool).reshape(valid_mask.shape + (1,))
 
         if mask_feature_name not in eopatch[mask_feature_type]:
-            dimensions = get_dimensions(feature_type=self.feature_type)
+            dimensions = get_dimensions(feature_type=self.feature_type, feature_name=self.feature_name)
             coordinates = get_coordinates(feature_type=self.feature_type,
+                                          feature_name=self.feature_name,
                                           bbox=self._get_parameter('bbox', eopatch),
                                           data=valid_data,
                                           timestamps=eopatch.timestamp)
