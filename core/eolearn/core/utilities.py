@@ -599,7 +599,6 @@ def eopatch_to_xarrays(eopatch):
             continue
         feature_type = feature[0]
         feature_name = feature[1]
-        print(feature_type, feature_name)
         if feature_type not in (FeatureType.VECTOR, FeatureType.VECTOR_TIMELESS, FeatureType.META_INFO):
             eopatch[feature_type][feature_name] = array_to_dataframe(eopatch, feature_type, feature_name)
 

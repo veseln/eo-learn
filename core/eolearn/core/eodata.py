@@ -20,7 +20,7 @@ import json
 import sentinelhub
 
 from .constants import FeatureType, FileFormat, OverwritePermission
-from .utilities import deep_eq, FeatureParser
+from .utilities import deep_eq, FeatureParser, eopatch_to_xarrays
 
 LOGGER = logging.getLogger(__name__)
 
@@ -623,7 +623,7 @@ class EOPatch:
                     for feature_name, loader in content.items():
                         content[feature_name] = loader.load()
 
-        return EOPatch(**requested_content)
+        return eopatch_to_xarrays(EOPatch(**requested_content))
 
     @staticmethod
     def _get_eopatch_content(path, mmap=False):
