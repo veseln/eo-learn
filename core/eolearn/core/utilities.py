@@ -495,9 +495,11 @@ def get_spatial_coordinates(bbox, data, feature_type):
     if feature_type == FeatureType.DATA_TIMELESS or feature_type == FeatureType.MASK_TIMELESS:
         index_x = 1
         index_y = 0
+    pixel_width = (bbox.max_x - bbox.min_x)/data.shape[index_x]
+    pixel_height = (bbox.max_y - bbox.min_y)/data.shape[index_y]
     coordinates = {
-        'x': np.linspace(bbox.min_x, bbox.max_x, data.shape[index_x]),
-        'y': np.linspace(bbox.min_y, bbox.max_y, data.shape[index_y])
+        'x': np.linspace(bbox.min_x+pixel_width/2, bbox.max_x-pixel_width/2, data.shape[index_x]),
+        'y': np.linspace(bbox.min_y+pixel_height/2, bbox.max_y-pixel_height/2, data.shape[index_y])
     }
 
     return coordinates
