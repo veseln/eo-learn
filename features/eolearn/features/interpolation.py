@@ -5,14 +5,13 @@ Module for interpolating, smoothing and re-sampling features in EOPatch
 import warnings
 import datetime as dt
 import inspect
-import calendar
 from functools import partial
 
 import dateutil
 import scipy.interpolate
 import numpy as np
 import numba
-from numba import prange
+from numba import njit
 from sklearn.gaussian_process import GaussianProcessRegressor
 
 from eolearn.core import EOTask, EOPatch, FeatureType, FeatureTypeSet
@@ -405,9 +404,20 @@ class LegacyInterpolation(InterpolationTask):
 
 class LinearInterpolation(InterpolationTask):
     """
-    Implements `eolearn.features.InterpolationTask` by using `numpy.interp` and @numb.jit(nopython=True)
+    Implements `eolearn.features.InterpolationTask` by using `numpy.interp` and @numb.jit(nopython=True).
+    LinearInterpolatoin can be parallelized.
     """
     def __init__(self, feature, parallel=False, **kwargs):
+        """
+
+        :param feature: A feature to be interpolated with optional new feature name
+        :type feature: (FeatureType, str) or (FeatureType, str, str)
+        :param parallel: If True, interpolation is done in parallel and will use as many CPUs
+        as detected by the multiprocessing module.
+        :type parallel: bool
+        :param kwargs: InterpolationTask parameters
+        :type kwargs:
+        """
         super().__init__(feature, np.interp, **kwargs)
         self.parallel = parallel
 
@@ -468,8 +478,7 @@ class LinearInterpolation(InterpolationTask):
         return new_eopatch
 
     @staticmethod
-    @numba.jit(nopython=True)
-    def interpolation_function(data, times, resampled_times):
+    def base_interpolation_function(data, times, resampled_times):
         """ Interpolates data feature
 
         :param data: Array in a shape of t x h x w x n
@@ -485,49 +494,7 @@ class LinearInterpolation(InterpolationTask):
         timestamps, height, width, depth = data.shape
         new_bands = np.empty((len(resampled_times), height * width * depth))
         data = data.reshape(timestamps, height * width * depth)
-        for n_feat in range(height * width * depth):
-            mask1d = ~np.isnan(data[:, n_feat])
-            if (~mask1d).all():
-                new_data = np.empty((len(resampled_times)))
-                new_data[:] = np.nan
-            else:
-                new_data = np.interp(resampled_times.astype(np.float64),
-                                     times[mask1d].astype(np.float64),
-                                     data[:, n_feat][mask1d].astype(np.float64))
-
-                true_index = np.where(mask1d)
-                index_first, index_last = true_index[0][0], true_index[0][-1]
-                min_time, max_time = times[index_first], times[index_last]
-                first = np.where(resampled_times < min_time)[0]
-                if first.size:
-                    new_data[:first[-1] + 1] = np.nan
-                last = np.where(max_time < resampled_times)[0]
-                if last.size:
-                    new_data[last[0]:] = np.nan
-
-            new_bands[:, n_feat] = new_data
-
-        return new_bands.reshape(len(resampled_times), height, width, depth).astype(data.dtype)
-
-    @staticmethod
-    @numba.jit(nopython=True, parallel=True)
-    def interpolation_function_parallel(data, times, resampled_times):
-        """ Interpolates data feature
-
-        :param data: Array in a shape of t x h x w x n
-        :type data: numpy.ndarray
-        :param times: Array of reference times relative to the first timestamp
-        :type times:
-        :param resampled_times: Array of reference times relative to the first timestamp in initial timestamp array.
-        :type resampled_times: numpy.array
-        :return: Array of interpolated values
-        :rtype: numpy.ndarray
-        """
-
-        timestamps, height, width, depth = data.shape
-        new_bands = np.empty((len(resampled_times), height * width * depth))
-        data = data.reshape(timestamps, height * width * depth)
-        for n_feat in prange(height * width * depth):
+        for n_feat in numba.prange(height * width * depth):
             mask1d = ~np.isnan(data[:, n_feat])
             if (~mask1d).all():
                 new_data = np.empty((len(resampled_times)))
@@ -549,25 +516,8 @@ class LinearInterpolation(InterpolationTask):
 
         return new_bands.reshape(len(resampled_times), height, width, depth)
 
-    @staticmethod
-    def datetime_to_utc(datetimes, start=None):
-        """ Converts list of utc datetimes to list of unix timestamp
-
-        :param datetimes:
-        :type datetimes:
-        :param start:
-        :type start:
-        :return:
-        :rtype:
-        """
-        epoch = [calendar.timegm(el.utctimetuple()) for el in datetimes]
-        if start:
-            start = calendar.timegm(start.utctimetuple())
-        else:
-            start = epoch[0]
-        epoch_from_0 = [el - start for el in epoch]
-
-        return epoch_from_0
+    interpolation_function = njit(base_interpolation_function)
+    interpolation_function_parallel = njit(base_interpolation_function, parallel=True)
 
 
 class CubicInterpolation(InterpolationTask):
